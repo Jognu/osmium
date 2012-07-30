@@ -1151,3 +1151,82 @@ function export_to_dna($fit) {
 
 	return $dna.'::';
 }
+
+function export_to_rna($fit) {
+	$things = array();
+
+	$things[$fit['ship']['typeid']][null] = 1;
+
+	foreach($fit['modules'] as $type => $a) {
+		foreach($a as $index => $m) {
+			$charge = isset($fit['charges'][$type][$index]) ?
+				$fit['charges'][$type][$index]['typeid'] : null;
+
+			@$things[$m['typeid']][$charge]++;
+		}
+	}
+
+	foreach($fit['drones'] as $d) {
+		@$things[$d['typeid']][null] += $d['quantityinspace'] + $d['quantityinbay'];
+	}
+
+	$format = '';
+	$args = array();
+
+	foreach($things as $typeid => $charges) {
+		foreach($charges as $chargeid => $count) {
+			$format .= 'C';
+
+			/* $format: 8 bits
+			   Bit usage: (least significant bit first)
+
+			   012              3              4567
+			   -------------    -----------    -----------------
+			   quantity size    has charge?    quantity if <= 15
+			*/
+
+			if($count > 255) {
+				$type = 2;
+			} else if($count > 15) {
+				$type = 1;
+			} else {
+				$type = 0;
+				$type = $type | ($count << 4);
+			}
+
+			if($chargeid != null) {
+				$type = $type | 8;
+			}
+
+			$args[] = $type;
+
+			$format .= 'n';
+			$args[] = $typeid;
+
+			if($chargeid != null) {
+				$format .= 'n';
+				$args[] = $chargeid;
+			}
+
+			if($count > 255) {
+				$format .= 'n';
+				$args[] = $count;
+			} else if($count > 15) {
+				$format .= 'C';
+				$args[] = $count;
+			}
+		}
+	}
+
+	array_unshift($args, $format);
+	return 'rna:'
+		.str_replace(array('+', '/'),
+		             array(':', ';'),
+		             rtrim(
+			             base64_encode(
+				             call_user_func_array('pack', $args)
+				             ),
+			             '='
+			             )
+		);
+}
