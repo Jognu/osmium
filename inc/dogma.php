@@ -20,8 +20,6 @@ namespace Osmium\Dogma;
 
 /* KEEP THIS NAMESPACE PRESET-AGNOSTIC. */
 
-const USEFUL_SKILLGROUPS = '(273, 272, 271, 255, 269, 256, 275, 257, 989)';
-
 /* ----------------------------------------------------- */
 
 function get_attributename($attributeid) {
@@ -105,7 +103,7 @@ function eval_skill_preexpressions(&$fit) {
 
 
 	$typeids = array();
-	$q = \Osmium\Db\query('SELECT invskills.typeid FROM osmium.invskills WHERE groupid IN '.USEFUL_SKILLGROUPS);
+	$q = \Osmium\Db\query('SELECT invskills.typeid FROM osmium.invskills');
 	while($row = \Osmium\Db\fetch_row($q)) {
 		$typeids[] = $row[0];
 	}
@@ -421,7 +419,13 @@ function get_source(&$fit, $source) {
 	return $src;
 }
 
+/** TODO: optimize this */
 function get_modifiers(&$fit, $name, $src) {
+	$m = get_all_modifiers($fit, $src);
+	return isset($m[$name]) ? $m[$name] : array();
+}
+
+function get_all_modifiers(&$fit, $src) {
 	static $shiptypes = array('ship', 'module', 'charge');
 
 	$modifiers = array();
@@ -440,36 +444,39 @@ function get_modifiers(&$fit, $name, $src) {
 		$requiresskillid = $src['requiredSkill'.$i];
 
 		if($includeshipmodifiers &&
-		   isset($fit['dogma']['ship']['__modifiers']['__requires_skill'][$requiresskillid][$name])) {
+		   isset($fit['dogma']['ship']['__modifiers']['__requires_skill'][$requiresskillid])) {
 			$modifiers = array_merge_recursive($modifiers,
 			                                   $fit['dogma']['ship']['__modifiers']
-			                                   ['__requires_skill'][$requiresskillid][$name]);
+			                                   ['__requires_skill'][$requiresskillid]);
 		}
-		if(isset($fit['dogma']['char']['__modifiers']['__requires_skill'][$requiresskillid][$name])) {
+		if(isset($fit['dogma']['char']['__modifiers']['__requires_skill'][$requiresskillid])) {
 			$modifiers = array_merge_recursive($modifiers,
 			                                   $fit['dogma']['char']['__modifiers']
-			                                   ['__requires_skill'][$requiresskillid][$name]);
+			                                   ['__requires_skill'][$requiresskillid]);
 		}
 	}
 
 	if(isset($src['typeid']) && isset($fit['cache'][$src['typeid']]['groupid'])) {
 		$groupid = $fit['cache'][$src['typeid']]['groupid'];
 		if($includeshipmodifiers &&
-		   isset($fit['dogma']['ship']['__modifiers']['__group'][$groupid][$name])) {
+		   isset($fit['dogma']['ship']['__modifiers']['__group'][$groupid])) {
 			$modifiers = array_merge_recursive($modifiers,
 			                                   $fit['dogma']['ship']['__modifiers']
-			                                   ['__group'][$groupid][$name]);
+			                                   ['__group'][$groupid]);
 		}
-		if(isset($fit['dogma']['char']['__modifiers']['__group'][$groupid][$name])) {
+		if(isset($fit['dogma']['char']['__modifiers']['__group'][$groupid])) {
 			$modifiers = array_merge_recursive($modifiers,
 			                                   $fit['dogma']['char']['__modifiers']
-			                                   ['__group'][$groupid][$name]);
+			                                   ['__group'][$groupid]);
 		}
 	}
 
-	if(isset($src['__modifiers'][$name])) {
-		$modifiers = array_merge_recursive($modifiers, $src['__modifiers'][$name]);
+	if(isset($src['__modifiers'])) {
+		$modifiers = array_merge_recursive($modifiers, $src['__modifiers']);
 	}
+
+	unset($modifiers['__group']);
+	unset($modifiers['__requires_skill']);
 
 	return $modifiers;
 }

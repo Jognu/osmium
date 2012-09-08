@@ -101,15 +101,16 @@ if($_GET['type'] == 'module' && isset($_GET['slottype']) && isset($_GET['index']
 
 $affectors = array();
 $dogmasource = \Osmium\Dogma\get_source($fit, $source);
+$allmodifiers = \Osmium\Dogma\get_all_modifiers($fit, $dogmasource);
 
-foreach($dogmasource as $aname => $val) {
+foreach($allmodifiers as $aname => $modifiers) {
 	if(isset($attributes[$aname])) {
 		$dname = $attributes[$aname][0];
 	} else $dname = ucfirst(preg_replace('%(([A-Z]+)|([0-9]))%', ' $1', $aname));
 
-	$modifiers = \Osmium\Dogma\get_modifiers($fit, $aname, $dogmasource);
 	if($modifiers === array()) continue;
 
+	\Osmium\Fit\get_attribute_in_cache($aname, $fit['cache']);
 	$mstackable = $fit['cache']['__attributes'][$aname]['stackable'];
 
 	foreach($modifiers as $mtype => $m) {
